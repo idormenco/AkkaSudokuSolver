@@ -1,6 +1,7 @@
 ﻿using System;
 using Akka.Actor;
 using Akka.Configuration;
+using SudokuSolver.Common.Messages;
 
 namespace SudokuSolver.Solver
 {
@@ -10,21 +11,6 @@ namespace SudokuSolver.Solver
 
         static void Main(string[] args)
         {
-            var initialGame = new int[,]
-            {
-                {0,8,1,0,0,7,0,3,4 },
-                {2,0,4,8,3,0,0,0,1 },
-                {0,3,0,0,9,1,0,2,8 },
-                {5,1,8,3,0,0,0,6,0 },
-                {3,0,0,7,6,2,1,0,0 },
-                {0,6,0,0,0,8,9,4,3 },
-                {0,9,0,6,8,0,4,7,0 },
-                {4,0,3,0,2,0,8,0,6 },
-                {8,0,6,1,0,4,3,0,0 }
-            };
-
-
-
             var config = ConfigurationFactory.ParseString(@"
                 akka {  
                     actor {
@@ -42,11 +28,26 @@ namespace SudokuSolver.Solver
 
             actorSystem = ActorSystem.Create("SudokuSolverActorSystem", config);
 
-            actorSystem.ActorOf(GameCoordinatorActor.Props(),"Sudoku");
-            
-
+            IActorRef gameActor = actorSystem.ActorOf(GameCoordinatorActor.Props(), "Sudoku");
 
             actorSystem.WhenTerminated.Wait();
+
+
+            while (true)
+            {
+                string command = Console.ReadLine() ?? "";
+
+                switch (command.ToLower().Trim())
+                {
+                    case "exit":
+                        System.Environment.Exit(1);
+                        break;
+                    case "print":
+                        gameActor.Tell(PrintCluesMessage.Instance);
+                        break;
+                }
+            }
+
         }
     }
 }

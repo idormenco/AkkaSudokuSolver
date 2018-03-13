@@ -1,8 +1,6 @@
 ﻿using Akka.Actor;
 using SudokuSolver.Common.Messages;
 using System;
-using System.Diagnostics;
-using System.Threading;
 
 namespace SudokuSolver.Printer
 {
@@ -12,7 +10,7 @@ namespace SudokuSolver.Printer
         IHandle<PrintMessage>
     {
         private readonly ActorSelection _server = Context.ActorSelection("akka.tcp://SudokuSolverActorSystem@localhost:8081/user/Sudoku");
-
+        private int valuesLeft = 81;
         private int?[,] sudokuBoard = new int?[9, 9];
 
         public PrinterActor()
@@ -29,7 +27,11 @@ namespace SudokuSolver.Printer
             sudokuBoard[message.RowIndex - 1, message.ColumnIndex - 1] = message.CellValue;
             Console.Clear();
             PrintBoard();
-            Thread.Sleep(200);
+            --valuesLeft;
+            if (valuesLeft == 0)
+            {
+                Console.WriteLine("DONE!");
+            }
         }
 
         private void PrintBoard()

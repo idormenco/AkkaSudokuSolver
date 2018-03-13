@@ -1,6 +1,7 @@
 ﻿using Akka.Actor;
 using SudokuSolver.Common.Messages;
 using System.Collections.Generic;
+using System.Configuration;
 using System.Linq;
 
 namespace SudokuSolver.Solver
@@ -37,10 +38,34 @@ namespace SudokuSolver.Solver
             Receive<HandshakeResponseMessage>(response => ProcessHandhakeResponse(response));
             Receive<StartSolvingMessage>(_ => StartSolving());
             Receive<IHaveThisNumber>(message => ProcessNumberReceived(message.Number));
-            if (cellNumber.HasValue)
+            Receive<SendStateMessage>(_ => SendState());
+            Receive<NakedTweenFindingMessage>(message => CheckNakedSingle(message));
+        }
+
+        private void CheckNakedSingle(NakedTweenFindingMessage message)
+        {
+            if (possibleNumbers.Count == 2 && message.PairValues.TrueForAll(x => possibleNumbers.Contains(x)))
             {
-                this.printerActor.Tell(new PrintCellValueMessage(rowIndex, columnIndex, cellNumber));
+                RemoveThisNumbersMessage removeThisNumbersMessage = new RemoveThisNumbersMessage(possibleNumbers.ToArray());
+
+                switch (message.CellNeighbourhood)
+                {
+                    case CellNeighbourhood.Row:
+                        rowCells.AsParallel().ForAll(x => x.Tell(removeThisNumbersMessage));
+                        break;
+                    case CellNeighbourhood.Column:
+                        columnCells.AsParallel().ForAll(x => x.Tell(removeThisNumbersMessage));
+                        break;
+                    case CellNeighbourhood.Square:
+                        squareCells.AsParallel().ForAll(x => x.Tell(removeThisNumbersMessage));
+                        break;
+                }
             }
+        }
+
+        private void SendState()
+        {
+            WhenHaveCellValue();
         }
 
         private void ProcessNumberReceived(int number)
@@ -53,25 +78,46 @@ namespace SudokuSolver.Solver
             if (possibleNumbers.Count == 1)
             {
                 cellNumber = possibleNumbers[0];
-                HaveCellValue();                
+                WhenHaveCellValue();
+                return;
+            }
+
+            if (possibleNumbers.Count == 2)
+            {
+                rowCells.AsParallel().ForAll(x => x.Tell(new NakedTweenFindingMessage(CellNeighbourhood.Row, possibleNumbers))); 
+                columnCells.AsParallel().ForAll(x => x.Tell(new NakedTweenFindingMessage(CellNeighbourhood.Column, possibleNumbers))); 
+                squareCells.AsParallel().ForAll(x => x.Tell(new NakedTweenFindingMessage(CellNeighbourhood.Square, possibleNumbers))); 
             }
         }
 
         private void StartSolving()
         {
-            HaveCellValue();
+            if (cellNumber.HasValue && !isSolved)
+            {
+                WhenHaveCellValue();
+            }
         }
 
-        private void HaveCellValue()
+        private void WhenHaveCellValue()
         {
             if (cellNumber.HasValue && !isSolved)
             {
                 isSolved = true;
-                rowCells.AsParallel().ForAll(x => x.Tell(new IHaveThisNumber(cellNumber.Value)));
-                columnCells.AsParallel().ForAll(x => x.Tell(new IHaveThisNumber(cellNumber.Value)));
-                squareCells.AsParallel().ForAll(x => x.Tell(new IHaveThisNumber(cellNumber.Value)));
+                IHaveThisNumber message = new IHaveThisNumber(cellNumber.Value);
+
+                BroadcastMessage(message);
+
                 printerActor.Tell(new PrintCellValueMessage(rowIndex, columnIndex, cellNumber));
+
+                Context.Stop(Self);
             }
+        }
+
+        private void BroadcastMessage(object message)
+        {
+            rowCells.AsParallel().ForAll(x => x.Tell(message));
+            columnCells.AsParallel().ForAll(x => x.Tell(message));
+            squareCells.AsParallel().ForAll(x => x.Tell(message));
         }
 
         private void ProcessHandhakeResponse(HandshakeResponseMessage response)
