@@ -2,8 +2,8 @@
 {
     public class HandshakeRequestMessage
     {
-        public string Location { get; }
-        public HandshakeRequestMessage(string location)
+        public CellNeighbourhood Location { get; }
+        public HandshakeRequestMessage(CellNeighbourhood location)
         {
             Location = location;
         }

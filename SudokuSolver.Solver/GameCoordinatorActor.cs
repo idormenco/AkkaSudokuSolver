@@ -1,16 +1,19 @@
-﻿using Akka.Actor;
+﻿using System.Collections.Generic;
+using Akka.Actor;
 using SudokuSolver.Common.Messages;
 using System.Linq;
-using static SudokuSolver.Solver.CellActor;
+using Akka.Util.Internal;
 
 namespace SudokuSolver.Solver
 {
     class GameCoordinatorActor : TypedActor,
-        IHandle<IAmPrinterMessage>
+        IHandle<IAmPrinterMessage>,
+        IHandle<HandshakeDoneMessage>
     {
-        public IActorRef Printer { get; }
+        private IActorRef Printer;
         private int[,] gameBoard;
-
+        private readonly List<IActorRef> unsolvedActorRefs = new List<IActorRef>();
+        private readonly List<IActorRef> solvedActorRefs = new List<IActorRef>();
         public GameCoordinatorActor(int[,] gameBoard)
         {
             this.gameBoard = gameBoard;
@@ -45,6 +48,7 @@ namespace SudokuSolver.Solver
         {
             System.Console.WriteLine("initializing game");
 
+            Printer = Sender;
             for (int x = 0; x < gameBoard.GetLength(0); x++)
             {
                 for (int y = 0; y < gameBoard.GetLength(1); y++)
@@ -52,17 +56,29 @@ namespace SudokuSolver.Solver
 
                     if (gameBoard[x, y] != 0)
                     {
-                        Context.ActorOf(CellActor.Props(Sender, x + 1, y + 1, gameBoard[x, y]), $"Cell-{x + 1}-{y + 1}");
+                        Context.ActorOf(CellActor.Props(Printer, x + 1, y + 1, gameBoard[x, y]), $"Cell-{x + 1}-{y + 1}");
                     }
                     else
                     {
-                        Context.ActorOf(CellActor.Props(Sender, x + 1, y + 1), $"Cell-{x + 1}-{y + 1}");
+                        Context.ActorOf(CellActor.Props(Printer, x + 1, y + 1), $"Cell-{x + 1}-{y + 1}");
                     }
                 }
             }
 
-            Context.GetChildren().AsParallel().ForAll(x => x.Tell(new StartWorkingMessage()));
+            Context.GetChildren().ForEach(x => x.Tell(StartHandshakesMessage.Instance));
         }
 
+        public void Handle(HandshakeDoneMessage message)
+        {
+
+            unsolvedActorRefs.Add(Sender);
+
+
+            if (unsolvedActorRefs.Count == 81)
+            {
+                Printer.Tell(new PrintMessage("[coordinator] all handshakes done!"));
+                unsolvedActorRefs.AsParallel().ForAll(x => x.Tell(StartSolvingMessage.Instance));
+            }
+        }
     }
 }

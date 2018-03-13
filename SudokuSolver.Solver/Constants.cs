@@ -2,9 +2,9 @@
 
 namespace SudokuSolver.Solver
 {
-    public class Constants
+    public static class Constants
     {
-        public Dictionary<int, List<string>> BlockCoordinates = new Dictionary<int, List<string>>()
+        public static Dictionary<int, List<string>> BlockCoordinates = new Dictionary<int, List<string>>()
         {
             { 1,new List<string>() { "1-1", "1-2", "1-3", "2-1", "2-2", "2-3", "3-1", "3-2", "3-3" } },
             { 2,new List<string>() { "1-4", "1-5", "1-6", "2-4", "2-5", "2-6", "3-4", "3-5", "3-6" } },
@@ -19,7 +19,7 @@ namespace SudokuSolver.Solver
             { 9,new List<string>() { "7-7", "7-8", "7-9", "8-7", "8-8", "8-9", "9-7", "9-8", "9-9" } },
         };
 
-        public Dictionary<string, int> CellToBlockIndex = new Dictionary<string, int>()
+        public static readonly Dictionary<string, int> CellToBlockIndex = new Dictionary<string, int>()
         {
             { "1-1",1 },{"1-2",1},{ "1-3", 1},{"2-1", 1},{"2-2",1},{ "2-3", 1},{"3-1",1},{ "3-2",1},{ "3-3",1},
             { "1-4", 2 }, { "1-5",2 }, { "1-6",2}, { "2-4", 2 }, {"2-5", 2 }, {"2-6",2}, { "3-4",2}, { "3-5",2 }, { "3-6" ,2},

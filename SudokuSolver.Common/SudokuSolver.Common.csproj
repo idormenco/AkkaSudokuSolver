@@ -58,14 +58,20 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Messages\CellNeighbourhood.cs" />
     <Compile Include="Messages\FindSudokuGameMessage.cs" />
+    <Compile Include="Messages\HandshakeDoneMessage.cs" />
     <Compile Include="Messages\HandshakeRequestMessage.cs" />
     <Compile Include="Messages\HandshakeResponseMessage.cs" />
     <Compile Include="Messages\IAmPrinterMessage.cs" />
     <Compile Include="Messages\IHasUniqueKey.cs" />
+    <Compile Include="Messages\IHaveThisNumber.cs" />
     <Compile Include="Messages\PrintCellValueMessage.cs" />
+    <Compile Include="Messages\PrintMessage.cs" />
     <Compile Include="Messages\RequestInitialNumberMessage.cs" />
     <Compile Include="Messages\StartHandShakeMessage.cs" />
+    <Compile Include="Messages\StartHandshakesMessage.cs" />
+    <Compile Include="Messages\StartSolvingMessage.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>

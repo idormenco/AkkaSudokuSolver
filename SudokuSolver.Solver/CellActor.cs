@@ -1,28 +1,28 @@
 ﻿using Akka.Actor;
 using SudokuSolver.Common.Messages;
-using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace SudokuSolver.Solver
 {
     public class CellActor : ReceiveActor
     {
-        public class StartWorkingMessage { }
-        private int rowIndex;
-        private int columnIndex;
-        private List<int> possibleNumbers = new List<int>() { 1, 2, 3, 4, 5, 6, 7, 8, 9 };
-        private IActorRef printerActor;
+        private readonly int rowIndex;
+        private readonly int columnIndex;
+        private readonly List<int> possibleNumbers = new List<int>() { 1, 2, 3, 4, 5, 6, 7, 8, 9 };
+        private readonly IActorRef printerActor;
         private int? cellNumber;
-        private List<IActorRef> rowCells = new List<IActorRef>();
-        private List<IActorRef> columnCells = new List<IActorRef>();
-        private List<IActorRef> squareCells = new List<IActorRef>();
+        private readonly List<IActorRef> rowCells = new List<IActorRef>();
+        private readonly List<IActorRef> columnCells = new List<IActorRef>();
+        private readonly List<IActorRef> squareCells = new List<IActorRef>();
+        private bool isSolved = false;
         public CellActor(IActorRef printerActor, int rowIndex, int columnIndex) : this(printerActor, rowIndex, columnIndex, null)
         {
         }
 
         private void StartWork()
         {
-            Console.WriteLine("I am working!");
+            Self.Tell(StartHandShakeMessage.Instance);
         }
 
         public CellActor(IActorRef printerActor, int rowIndex, int columnIndex, int? cellNumber)
@@ -31,40 +31,95 @@ namespace SudokuSolver.Solver
             this.rowIndex = rowIndex;
             this.columnIndex = columnIndex;
             this.printerActor = printerActor;
-            Receive<StartWorkingMessage>(_ => StartWork());
+            Receive<StartHandshakesMessage>(_ => StartWork());
             Receive<StartHandShakeMessage>(_ => StartHandshake());
             Receive<HandshakeRequestMessage>(request => ProcessHandhakeRequest(request));
             Receive<HandshakeResponseMessage>(response => ProcessHandhakeResponse(response));
+            Receive<StartSolvingMessage>(_ => StartSolving());
+            Receive<IHaveThisNumber>(message => ProcessNumberReceived(message.Number));
+            if (cellNumber.HasValue)
+            {
+                this.printerActor.Tell(new PrintCellValueMessage(rowIndex, columnIndex, cellNumber));
+            }
+        }
 
-            printerActor.Tell(new PrintCellValueMessage(rowIndex, columnIndex, cellNumber));
+        private void ProcessNumberReceived(int number)
+        {
+            possibleNumbers.Remove(number);
+            rowCells.Remove(Sender);
+            columnCells.Remove(Sender);
+            squareCells.Remove(Sender);
+
+            if (possibleNumbers.Count == 1)
+            {
+                cellNumber = possibleNumbers[0];
+                HaveCellValue();                
+            }
+        }
+
+        private void StartSolving()
+        {
+            HaveCellValue();
+        }
+
+        private void HaveCellValue()
+        {
+            if (cellNumber.HasValue && !isSolved)
+            {
+                isSolved = true;
+                rowCells.AsParallel().ForAll(x => x.Tell(new IHaveThisNumber(cellNumber.Value)));
+                columnCells.AsParallel().ForAll(x => x.Tell(new IHaveThisNumber(cellNumber.Value)));
+                squareCells.AsParallel().ForAll(x => x.Tell(new IHaveThisNumber(cellNumber.Value)));
+                printerActor.Tell(new PrintCellValueMessage(rowIndex, columnIndex, cellNumber));
+            }
         }
 
         private void ProcessHandhakeResponse(HandshakeResponseMessage response)
         {
             switch (response.Location)
             {
-                case "row":
-                    rowCells.Add(response.Myself);
+                case CellNeighbourhood.Row:
+                    if (Sender != Self)
+                    {
+                        rowCells.Add(Sender);
+                    }
                     break;
-                case "column":
-                    rowCells.Add(response.Myself);
+                case CellNeighbourhood.Column:
+                    if (Sender != Self)
+                    {
+                        columnCells.Add(Sender);
+                    }
                     break;
-                case "square":
-                    squareCells.Add(response.Myself);
+                case CellNeighbourhood.Square:
+                    if (Sender != Self)
+                    {
+                        squareCells.Add(Sender);
+                    }
                     break;
+            }
+
+            if (rowCells.Count == 8 && columnCells.Count == 8 && squareCells.Count == 8)
+            {
+                Context.Parent.Tell(new HandshakeDoneMessage(cellNumber));
             }
         }
 
         private void ProcessHandhakeRequest(HandshakeRequestMessage request)
         {
-            Sender.Tell(new HandshakeResponseMessage(Self, request.Location));
+            Sender.Tell(new HandshakeResponseMessage(request.Location));
         }
 
         private void StartHandshake()
         {
-            Context.ActorSelection($"../Cell-{rowIndex}-*").Tell(new HandshakeRequestMessage("row"));
-            Context.ActorSelection($"../Cell-{rowIndex}-*").Tell(new HandshakeRequestMessage("column"));
+            Context.ActorSelection($"../Cell-{rowIndex}-*").Tell(new HandshakeRequestMessage(CellNeighbourhood.Row));
+            Context.ActorSelection($"../Cell-*-{columnIndex}").Tell(new HandshakeRequestMessage(CellNeighbourhood.Column));
+            int blockIndex = Constants.CellToBlockIndex[$"{rowIndex}-{columnIndex}"];
+            var lst = Constants.BlockCoordinates[blockIndex];
 
+            foreach (string index in lst)
+            {
+                Context.ActorSelection($"../Cell-{index}").Tell(new HandshakeRequestMessage(CellNeighbourhood.Square));
+            }
         }
 
         public static Props Props(IActorRef printerActor, int rowIndex, int columnIndex)

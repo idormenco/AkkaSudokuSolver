@@ -8,7 +8,8 @@ namespace SudokuSolver.Printer
 {
     public class PrinterActor : TypedActor,
         IHandle<FindSudokuGameMessage>,
-        IHandle<PrintCellValueMessage>
+        IHandle<PrintCellValueMessage>,
+        IHandle<PrintMessage>
     {
         private readonly ActorSelection _server = Context.ActorSelection("akka.tcp://SudokuSolverActorSystem@localhost:8081/user/Sudoku");
 
@@ -26,7 +27,6 @@ namespace SudokuSolver.Printer
         public void Handle(PrintCellValueMessage message)
         {
             sudokuBoard[message.RowIndex - 1, message.ColumnIndex - 1] = message.CellValue;
-            Debug.WriteLine(message.CellValue);
             Console.Clear();
             PrintBoard();
             Thread.Sleep(200);
@@ -53,6 +53,11 @@ namespace SudokuSolver.Printer
         public void Handle(FindSudokuGameMessage message)
         {
             _server.Tell(new IAmPrinterMessage());
+        }
+
+        public void Handle(PrintMessage message)
+        {
+            Console.WriteLine(message.Message);
         }
     }
 }
