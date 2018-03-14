@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Collections.ObjectModel;
 
 namespace SudokuSolver.Common.Messages
 {
@@ -6,13 +7,13 @@ namespace SudokuSolver.Common.Messages
     {
         public int Row { get; }
         public int Column { get; }
-        public List<int> PossibleInts { get; }
+        public IReadOnlyList<int> PossibleInts { get; }
 
         public PrintCluesResponseMessage(int row, int column, List<int> possibleInts)
         {
             Row = row;
             Column = column;
-            PossibleInts = possibleInts;
+            PossibleInts = new ReadOnlyCollection<int>(possibleInts);
         }
     }
 }

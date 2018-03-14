@@ -2,6 +2,5 @@
 {
     public class StartSolvingMessage
     {
-        public static StartSolvingMessage Instance =>new StartSolvingMessage(); 
     }
 }

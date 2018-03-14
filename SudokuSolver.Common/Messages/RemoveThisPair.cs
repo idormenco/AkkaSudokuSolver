@@ -1,15 +1,15 @@
 ﻿using System.Collections.Generic;
+using System.Collections.ObjectModel;
 
 namespace SudokuSolver.Common.Messages
 {
     public class RemoveThisNumbersMessage
     {
-        public List<int> Numbers { get; }
+        public IReadOnlyList<int> Numbers { get; }
 
         public RemoveThisNumbersMessage(params int[] numbers)
         {
-            Numbers = new List<int>();
-            Numbers.AddRange(numbers);
+            Numbers = new ReadOnlyCollection<int>(numbers);
         }
     }
 }

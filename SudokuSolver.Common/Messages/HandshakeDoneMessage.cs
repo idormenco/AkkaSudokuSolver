@@ -2,7 +2,7 @@
 {
     public class HandshakeDoneMessage
     {
-        public int? Value { get; set; }
+        public int? Value { get; }
 
         public HandshakeDoneMessage(int? value)
         {

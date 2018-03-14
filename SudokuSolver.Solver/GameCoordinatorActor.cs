@@ -3,21 +3,22 @@ using System.Collections.Generic;
 using Akka.Actor;
 using SudokuSolver.Common.Messages;
 using System.Linq;
+using Akka.Event;
 using Akka.Util.Internal;
 
 namespace SudokuSolver.Solver
 {
-    class GameCoordinatorActor : TypedActor,
-        IHandle<IAmPrinterMessage>,
-        IHandle<HandshakeDoneMessage>,
-        IHandle<PrintCluesMessage>,
-        IHandle<PrintCluesResponseMessage>
+    public class GameCoordinatorActor : ReceiveActor
     {
         private IActorRef Printer;
         private readonly int[,] gameBoard;
         private string[,] cluesBoard;
         private readonly List<IActorRef> unsolvedActorRefs = new List<IActorRef>();
         private readonly List<IActorRef> solvedActorRefs = new List<IActorRef>();
+
+        private readonly ILoggingAdapter _log = Logging.GetLogger(Context);
+
+
         public GameCoordinatorActor(int[,] gameBoard)
         {
             this.gameBoard = gameBoard;
@@ -27,17 +28,29 @@ namespace SudokuSolver.Solver
         {
             gameBoard = new int[,]
             {
-                {0,8,1,0,0,7,0,3,4 },
-                {2,0,4,8,3,0,0,0,1 },
-                {0,3,0,0,9,1,0,2,8 },
-                {5,1,8,3,0,0,0,6,0 },
-                {3,0,0,7,6,2,1,0,0 },
-                {0,6,0,0,0,8,9,4,3 },
-                {0,9,0,6,8,0,4,7,0 },
-                {4,0,3,0,2,0,8,0,6 },
-                {8,0,6,1,0,4,3,0,0 }
+                {0,0,0, 0,0,0, 0,3,4 },
+                {0,3,5, 0,4,0, 0,0,0 },
+                {6,0,0, 0,9,0, 2,0,0 },
+
+                {0,5,6, 0,0,2, 0,1,0 },
+                {0,0,0, 0,0,0, 6,0,9 },
+                {0,1,8, 0,0,9, 0,2,0 },
+
+                {2,0,0, 0,1,0, 8,0,0 },
+                {0,6,9, 0,3,0, 0,0,0 },
+                {0,0,0, 0,0,0, 0,4,7 }
             };
             cluesBoard = new string[9, 9];
+
+            Receive<IAmPrinterMessage>(_=> Handle());
+            Receive<HandshakeDoneMessage>(message => Handle(message));
+            Receive<PrintCluesMessage>(message => Handle(message));
+            Receive<IHaveThisNumber>(message => Handle(message));
+        }
+
+        private void Handle(IHaveThisNumber message)
+        {
+            gameBoard[message.Row - 1, message.Column - 1] = message.Number;
         }
 
         public static Props Props()
@@ -49,7 +62,7 @@ namespace SudokuSolver.Solver
             return Akka.Actor.Props.Create(() => new GameCoordinatorActor(gameBoard));
         }
 
-        public void Handle(IAmPrinterMessage message)
+        public void Handle()
         {
             System.Console.WriteLine("initializing game");
 
@@ -70,7 +83,7 @@ namespace SudokuSolver.Solver
                 }
             }
 
-            Context.GetChildren().ForEach(x => x.Tell(StartHandshakesMessage.Instance));
+            Context.GetChildren().ForEach(x => x.Tell(new StartHandshakesMessage()));
         }
 
         public void Handle(HandshakeDoneMessage message)
@@ -88,18 +101,28 @@ namespace SudokuSolver.Solver
             if (solvedActorRefs.Count + unsolvedActorRefs.Count == 81)
             {
                 Printer.Tell(new PrintMessage("[coordinator] all handshakes done!"));
-                solvedActorRefs.AsParallel().ForAll(x => x.Tell(SendStateMessage.Instance));
+                solvedActorRefs.AsParallel().ForAll(x => x.Tell(new SendStateMessage()));
             }
         }
 
-        public void Handle(PrintCluesMessage message)
+        private async void Handle(PrintCluesMessage message)
         {
-            solvedActorRefs.AsParallel().ForAll(x => x.Tell(message));
+            unsolvedActorRefs.Clear();
+            unsolvedActorRefs.AddRange(Context.GetChildren().ToList());
+            foreach (IActorRef actorRef in unsolvedActorRefs)
+            {
+                PrintCluesResponseMessage response = await actorRef.Ask<PrintCluesResponseMessage>(new PrintCluesMessage());
+                Handle(response);
+            }
         }
 
-        public void Handle(PrintCluesResponseMessage message)
+        private void Handle(PrintCluesResponseMessage message)
         {
-            cluesBoard[message.Row - 1, message.Column - 1] = message.PossibleInts.Select(x => x.ToString()).Join("");
+            string clues = message.PossibleInts.Select(x => x.ToString()).Join("");
+
+            _log.Debug($"received clues for {message.Row} - {message.Column} - {clues}");
+
+            cluesBoard[message.Row - 1, message.Column - 1] = clues;
 
             PrintBoard();
         }
@@ -107,13 +130,14 @@ namespace SudokuSolver.Solver
 
         private void PrintBoard()
         {
+            Console.Clear();
             for (int i = 0; i < cluesBoard.GetLength(0); i++)
             {
                 if (i == 0) Console.WriteLine("--------+-------+--------");
                 string line = "";
                 for (int j = 0; j < cluesBoard.GetLength(1); j++)
                 {
-                    var cell = cluesBoard[i, j];
+                    var cell = cluesBoard[i, j] ?? "";
                     line += (j == 0 ? "| " : "") + (cell != "" ? cell : gameBoard[i, j].ToString()) + " " + ((j + 1) % 3 == 0 ? "| " : "");
                 }
                 Console.WriteLine(line);

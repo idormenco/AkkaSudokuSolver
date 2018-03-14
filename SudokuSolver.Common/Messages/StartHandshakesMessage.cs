@@ -2,6 +2,5 @@
 {
     public class StartHandshakesMessage
     {
-        public static StartHandshakesMessage Instance=>new StartHandshakesMessage();
     }
 }

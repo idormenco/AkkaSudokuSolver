@@ -12,7 +12,11 @@ namespace SudokuSolver.Solver
         static void Main(string[] args)
         {
             var config = ConfigurationFactory.ParseString(@"
-                akka {  
+                akka {
+                    loggers = [""Akka.Logger.NLog.NLogLogger, Akka.Logger.NLog""]
+                    stdout-loglevel = DEBUG
+                    loglevel = DEBUG
+                    log-config-on-start = on
                     actor {
                         provider = remote
                     }
@@ -27,12 +31,8 @@ namespace SudokuSolver.Solver
             ");
 
             actorSystem = ActorSystem.Create("SudokuSolverActorSystem", config);
-
+            
             IActorRef gameActor = actorSystem.ActorOf(GameCoordinatorActor.Props(), "Sudoku");
-
-            actorSystem.WhenTerminated.Wait();
-
-
             while (true)
             {
                 string command = Console.ReadLine() ?? "";
@@ -43,10 +43,19 @@ namespace SudokuSolver.Solver
                         System.Environment.Exit(1);
                         break;
                     case "print":
-                        gameActor.Tell(PrintCluesMessage.Instance);
+                        gameActor.Tell(new PrintCluesMessage());
                         break;
                 }
             }
+
+
+            actorSystem.WhenTerminated.Wait();
+
+
+            //while (true)
+            //{
+
+            //}
 
         }
     }

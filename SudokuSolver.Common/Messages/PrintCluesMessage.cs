@@ -2,6 +2,5 @@
 {
     public class PrintCluesMessage
     {
-        public static PrintCluesMessage Instance => new PrintCluesMessage();
     }
 }

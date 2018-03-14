@@ -6,12 +6,12 @@ namespace SudokuSolver.Printer
 {
     public class PrinterActor : TypedActor,
         IHandle<FindSudokuGameMessage>,
-        IHandle<PrintCellValueMessage>,
+        IHandle<IHaveThisNumber>,
         IHandle<PrintMessage>
     {
         private readonly ActorSelection _server = Context.ActorSelection("akka.tcp://SudokuSolverActorSystem@localhost:8081/user/Sudoku");
         private int valuesLeft = 81;
-        private int?[,] sudokuBoard = new int?[9, 9];
+        private readonly int?[,] sudokuBoard = new int?[9, 9];
 
         public PrinterActor()
         {
@@ -22,9 +22,9 @@ namespace SudokuSolver.Printer
             return Akka.Actor.Props.Create(() => new PrinterActor());
         }
 
-        public void Handle(PrintCellValueMessage message)
+        public void Handle(IHaveThisNumber message)
         {
-            sudokuBoard[message.RowIndex - 1, message.ColumnIndex - 1] = message.CellValue;
+            sudokuBoard[message.Row - 1, message.Column - 1] = message.Number;
             Console.Clear();
             PrintBoard();
             --valuesLeft;

@@ -64,7 +64,6 @@
     <Compile Include="Messages\HandshakeRequestMessage.cs" />
     <Compile Include="Messages\HandshakeResponseMessage.cs" />
     <Compile Include="Messages\IAmPrinterMessage.cs" />
-    <Compile Include="Messages\IHasUniqueKey.cs" />
     <Compile Include="Messages\IHaveThisNumber.cs" />
     <Compile Include="Messages\NakedTweenFindingMessage.cs" />
     <Compile Include="Messages\PrintCellValueMessage.cs" />
@@ -72,7 +71,6 @@
     <Compile Include="Messages\PrintCluesResponseMessage.cs" />
     <Compile Include="Messages\PrintMessage.cs" />
     <Compile Include="Messages\RemoveThisPair.cs" />
-    <Compile Include="Messages\RequestInitialNumberMessage.cs" />
     <Compile Include="Messages\SendStateMessage.cs" />
     <Compile Include="Messages\StartHandShakeMessage.cs" />
     <Compile Include="Messages\StartHandshakesMessage.cs" />

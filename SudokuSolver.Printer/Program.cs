@@ -10,7 +10,7 @@ namespace SudokuSolver.Printer
         {
 
             var config = ConfigurationFactory.ParseString(@"
-akka {
+            akka {
                 actor {
                     provider = ""Akka.Remote.RemoteActorRefProvider, Akka.Remote""
                 }
